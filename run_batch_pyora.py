@@ -10,26 +10,41 @@ __author__ = 'so3mm5'
 __prog__ = 'run_batch_pyora'
 __version__ = '0.0'
 
+from argparse import ArgumentParser
+from os.path import abspath, expanduser, expandvars, normpath, join, isfile, split, isdir
+
 from initialise_pyorator_batch import read_config_file, initiation
 
 sleepTime = 5
 WARN_STR = '*** Warning *** '
 PROGRAM_ID = 'spec_run'
 ERROR_STR = '*** Error *** '
+FNAME_RUN = 'FarmWthrMgmt.xlsx'
 
-class RunSites(object):
+class RunSite(object):
     """
     C
     """
-    def __init__(self, parent=None):
+    def __init__(self, run_fns_dir):
+        """
+        C
+        """
         initiation(self)
+        read_config_file(self)
         pass
 
 def main():
     """
     Entry point
     """
-    RunSites()  # instantiate form
+    argparser = ArgumentParser(prog=__prog__,
+                               description='Run ECOSSE in parallel for spatial simulations.',
+                               usage='{} runfile'.format(__prog__))
+    argparser.add_argument('runfnsdir', help='Full path of for the Excel run files' + FNAME_RUN)
+    args = argparser.parse_args()
+    args.runfnsdir= abspath(normpath(expanduser(expandvars(args.runfnsdir))))
+
+    RunSite(args.runfnsdir)  # instantiate model run
     # sim.run_ecosse()
 
 if __name__ == '__main__':

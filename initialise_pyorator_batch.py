@@ -30,8 +30,8 @@ from hwsd_bil import check_hwsd_integrity
 from weather_datasets import read_weather_dsets_detail
 
 from set_up_logging import set_up_logging
-from ora_excel_read import (check_params_excel_file, check_xls_run_file,
-                            ReadStudy, ReadCropOwNitrogenParms, ReadAnmlProdn)
+from ora_excel_read_batch import check_xls_run_file
+from ora_excel_read import (check_params_excel_file, ReadStudy, ReadCropOwNitrogenParms, ReadAnmlProdn)
 from ora_cn_classes import CarbonChange, NitrogenChange, CropProdModel, LivestockModel, EconomicsModel
 from ora_water_model import SoilWaterChange
 from ora_lookup_df_fns import read_lookup_excel_file, fetch_display_names_from_metrics
@@ -318,10 +318,7 @@ def read_config_file(form):
         if len(study_dirs) > 0:
             mgmt_dir0 = join(study_dir, study_dirs[0])
 
-    if isdir(mgmt_dir0):
-        form.w_tab_wdgt.w_run_dir0.setText(mgmt_dir0)
-        form.w_tab_wdgt.w_run_dir3.setText(mgmt_dir0)
-    else:
+    if not isdir(mgmt_dir0):
         mess = '\nManagement path: ' + mgmt_dir0 + ' does not exist\n\t- check configuration file ' + config_file
         print(ERROR_STR + mess)
         return False
@@ -330,24 +327,10 @@ def read_config_file(form):
     # =============
     run_xls_fname = join(mgmt_dir0, FNAME_RUN)
     if isfile(run_xls_fname):
-        run_fn_dscr = check_xls_run_file(form.w_tab_wdgt.w_run_model, mgmt_dir0)
-        form.w_tab_wdgt.w_run_dscr.setText(run_fn_dscr)
+        run_fn_dscr, run_model_flag = check_xls_run_file(run_xls_fname, mgmt_dir0)
+        print(run_fn_dscr)
     else:
         print(WARN_STR + '\nRun file ' + run_xls_fname + ' does not exist\n\t- select another management path')
-
-    if config['write_excel']:
-        form.w_tab_wdgt.w_make_xls.setCheckState(2)
-    else:
-        form.w_tab_wdgt.w_make_xls.setCheckState(0)
-
-    # required for extra organic waste
-    # ================================
-    for ow_typ in form.ora_parms.ow_parms:
-        if ow_typ != 'Organic waste type':
-            form.w_tab_wdgt.w_combo13.addItem(ow_typ)
-
-    for mnth in MNTH_NAMES_SHORT:
-        form.w_tab_wdgt.w_mnth_appl.addItem(mnth)
 
     # stanza for extra org waste
     # ==========================
@@ -364,46 +347,7 @@ def read_config_file(form):
         ow_type_indx = config['ow_type_indx']
         mnth_appl_indx = config['mnth_appl_indx']
 
-    form.w_tab_wdgt.w_owex_min.setText(str(owex_min))
-    form.w_tab_wdgt.w_owex_max.setText(str(owex_max))
-    form.w_tab_wdgt.w_combo13.setCurrentIndex(max(0, ow_type_indx))  # value must >= 0
-    form.w_tab_wdgt.w_mnth_appl.setCurrentIndex(mnth_appl_indx)
-
-    # populate popup lists
-    # ====================
-    lookup_df = form.settings['lookup_df']
-    carbon_change = CarbonChange()
-    display_names = fetch_display_names_from_metrics(lookup_df, carbon_change)
-    for display_name in display_names:
-        form.w_tab_wdgt.w_combo07.addItem(display_name)
-        form.w_tab_wdgt.w_combo37.addItem(display_name)
-
-    nitrogen_change = NitrogenChange()
-    display_names = fetch_display_names_from_metrics(lookup_df, nitrogen_change)
-    for display_name in display_names:
-        form.w_tab_wdgt.w_combo08.addItem(display_name)
-        form.w_tab_wdgt.w_combo38.addItem(display_name)
-
-    soil_water = SoilWaterChange()
-    display_names = fetch_display_names_from_metrics(lookup_df, soil_water)
-    for display_name in display_names:
-        form.w_tab_wdgt.w_combo09.addItem(display_name)
-        form.w_tab_wdgt.w_combo39.addItem(display_name)
-
     crop_model = CropProdModel()
-    display_names = fetch_display_names_from_metrics(lookup_df, crop_model)
-    for display_name in display_names:
-        form.w_tab_wdgt.w_combo10.addItem(display_name)
-
-    lvstck_model = LivestockModel()
-    display_names = fetch_display_names_from_metrics(lookup_df, lvstck_model)
-    for display_name in display_names:
-        form.w_tab_wdgt.w_combo11.addItem(display_name)
-
-    econ_model = EconomicsModel()
-    display_names = fetch_display_names_from_metrics(lookup_df, econ_model)
-    for display_name in display_names:
-        form.w_tab_wdgt.w_combo12.addItem(display_name)
 
     # enable users to view outputs from previous run
     # ==============================================
@@ -459,14 +403,8 @@ def read_config_file(form):
     form.w_tab_wdgt.w_nyrs_ss.setText(str(config['nyrs_ss']))
     form.w_tab_wdgt.w_nyrs_fwd.setText(str(config['nyrs_fwd']))
 
-    # post path to CSV weather file
-    # =============================
-    if 'csv_wthr_fn' in config:
-        form.w_tab_wdgt.w_csv_fn.setText(config['csv_wthr_fn'])
-        dum, dum = read_csv_wthr_file(config['csv_wthr_fn'], form.w_tab_wdgt.w_csv_dscr)
+    dum, dum = read_csv_wthr_file(config['csv_wthr_fn'], form.w_tab_wdgt.w_csv_dscr)
 
-    prod_system = form.w_tab_wdgt.w_systems.currentText()
-    form.w_tab_wdgt.sys_descr_lbl.setText(prod_system_to_descr(prod_system))
     return True
 
 def write_config_file(form, message_flag=True):
@@ -510,19 +448,3 @@ def write_config_file(form, message_flag=True):
             print()
 
     return
-
-
-# not yet used - experimental
-# ===========================
-
-class exchangeObj(object, ):
-
-    def __init__(self, lvstck_files, anml_prodn_obj):
-        """
-        creates object which bridges the different functional areas of PyOrator:
-            Economics - energy, labour, purchases and sales
-            Biophysical model - crop production, soil, carbon, nitrogen and water
-            Livestock - animal production
-        """
-        self.all_runs_output = {}
-        self.all_runs_crop_model = {}
