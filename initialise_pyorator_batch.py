@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------------------
 # Name:        initialise_funcs.py
-# Purpose:     script to read read and write the setup and configuration files
+# Purpose:     script to read and write the setup and configuration files
 # Author:      Mike Martin
 # Created:     31/07/2020
 # Licence:     <your licence>
@@ -9,7 +9,7 @@
 #       entries for drop-down menus are populated after GUI has been created and config file has been read
 # ------------------------------------------------------------------------------- (exit)
 
-__prog__ = 'initialise_pyorator.py'
+__prog__ = 'initialise_pyorator_batch.py'
 __version__ = '0.0.0'
 
 # Version history
@@ -57,14 +57,15 @@ def initiation(form):
     """
     # retrieve settings
     # =================
-    form.settings = _read_setup_file(PROGRAM_ID)
+    form.settings, form.lookup_df = _read_setup_file(PROGRAM_ID)
+
+    # ORATOR parameters file
+    # ======================
     parms_xls_fn = form.settings['params_xls']
     print('Reading: ' + parms_xls_fn)
-    form.ora_parms = ReadCropOwNitrogenParms(parms_xls_fn)
-
-    # create animal production object which includes crop names for validation purposes
-    # =================================================================================
-    form.anml_prodn = ReadAnmlProdn(parms_xls_fn, form.ora_parms.crop_vars)
+    ora_parms = ReadCropOwNitrogenParms(parms_xls_fn)
+    form.ora_parms = ora_parms
+    form.anml_prodn = ora_parms
 
     # check weather data
     # ==================
@@ -131,13 +132,11 @@ def _read_setup_file(program_id):
     # =========================================================
     excel_flag = False
     if isdir(settings['excel_dir']):
-
         excel_path = join(settings['excel_dir'], 'EXCEL.EXE')
         if isfile(excel_path):
             excel_flag = True
         else:
             print(ERROR_STR + 'Excel progam must exist - expected here: ' + excel_path)
-
     else:
         print(ERROR_STR + 'Excel directory must exist - usually here: ' + EXCEL_EXE_PATH)
 
@@ -147,22 +146,31 @@ def _read_setup_file(program_id):
 
     settings['excel_path'] = excel_path
 
-    # validate mandatory lookup, parameters and economics Excel files
-    # ===============================================================
-    if read_lookup_excel_file(settings) is None:
+    # validate mandatory lookup table Excel file
+    # ==========================================
+    lookup_df = read_lookup_excel_file(settings, batch_flag=True)
+    if lookup_df is None:
         sleep(sleepTime)
         sys.exit(0)
 
+    # validate mandatory parameters Excel file
+    # ========================================
     params_xls = normpath(settings['params_xls'])
+    file_desc = 'crop, OW, N and animal production parameters '
+    print('Reading ' + file_desc + 'file')
     if check_params_excel_file(params_xls) is None:
-        print('Excel input file ' + params_xls + ' must exist')
+        print(ERROR_STR + file_desc + params_xls + ' must exist')
         sleep(sleepTime)
         sys.exit(0)
 
+    # validate mandatory economics Excel file
+    # =======================================
     tmplt_dir = join(split(settings['log_dir'])[0], 'run', 'templates')
     econ_xls_fn = normpath(join(tmplt_dir, FNAME_ECON))
-    if not isfile(econ_xls_fn):
-        print('Excel economics file ' + econ_xls_fn + ' must exist')
+    if isfile(econ_xls_fn):
+        print('Economics file: ' + econ_xls_fn)
+    else:
+        print(ERROR_STR + 'Economics file ' + econ_xls_fn + ' must exist')
         sleep(sleepTime)
         sys.exit(0)
 
@@ -189,7 +197,9 @@ def _read_setup_file(program_id):
 
     wthr_dir = settings['wthr_dir']
     if wthr_dir is not None:
-        if not lexists(wthr_dir):
+        if lexists(wthr_dir):
+            print('Weather datasets path: ' + wthr_dir)
+        else:
             print(WARN_STR + ' weather datasets path ' + wthr_dir + ' does not exist')
             wthr_dir = None
 
@@ -238,8 +248,7 @@ def _read_setup_file(program_id):
 
     settings['study'] = ''
 
-    return settings
-
+    return settings, lookup_df
 
 def _write_default_config_file(config_file, study_area_dir):
     """

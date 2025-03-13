@@ -10,23 +10,7 @@ __author__ = 'so3mm5'
 __prog__ = 'run_batch_pyora'
 __version__ = '0.0'
 
-from argparse import ArgumentParser
-from datetime import datetime
-from json import load as json_load
-import math
-from os.path import abspath, expanduser, expandvars, normpath, join, isfile, split, isdir
-from os import getcwd, walk, chdir
-
-from subprocess import Popen, PIPE, STDOUT
-from sys import stdout, exit
-from time import time, sleep
-from multiprocessing import cpu_count
-
-from socket import socket, AF_INET, SOCK_STREAM, gethostname
-from copy import copy, deepcopy
-
-from set_up_logging import set_up_logging
-from initialise_pyorator import read_config_file, initiation, write_config_file
+from initialise_pyorator_batch import read_config_file, initiation
 
 sleepTime = 5
 WARN_STR = '*** Warning *** '
@@ -39,12 +23,13 @@ class RunSites(object):
     """
     def __init__(self, parent=None):
         initiation(self)
+        pass
 
 def main():
     """
     Entry point
     """
-    sim = RunSites()  # instantiate form
+    RunSites()  # instantiate form
     # sim.run_ecosse()
 
 if __name__ == '__main__':
