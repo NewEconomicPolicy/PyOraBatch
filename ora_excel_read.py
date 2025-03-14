@@ -908,10 +908,7 @@ class ReadStudy(object, ):
                 study_desc = 'Study area: ' + study_area + '\t\tFarm: ' + farm_name
                 study_desc += '\t\tLatitude: {}'.format(latitude)
                 study_desc += '\tLongitude: {}'.format(longitude)
-                if hasattr(form, 'w_study'):
-                    form.w_study.setText(study_desc)
-                else:
-                    form.w_tab_wdgt.w_study.setText(study_desc)
+                print(study_desc)
 
                 self.study_name = farm_name
                 self.latitude = latitude
@@ -929,30 +926,9 @@ class ReadStudy(object, ):
                     except:
                         raise Exception('*** Error *** Could not create output directory: ' + out_dir)
 
+                form.settings['mgmt_dir'] = mgmt_dir
                 form.settings['out_dir'] = out_dir
-                _repopulate_excel_dropdown(form, farm_name)
                 self.study_ok_flag = True
-
-def _repopulate_excel_dropdown(form, study_name):
-    """
-    repopulate Excel drop-down associated with Display output Excel files
-    """
-    if hasattr(form, 'w_combo17'):
-        w_combo17 = form.w_combo17
-        w_disp_out = form.w_disp_out
-    else:
-        w_combo17 = form.w_tab_wdgt.w_combo17
-        w_disp_out = form.w_tab_wdgt.w_disp_out
-
-    out_dir = form.settings['out_dir']
-    xlsx_list = glob(out_dir + '/' + study_name + '*.xlsx')
-    w_combo17.clear()
-    if len(xlsx_list) > 0:
-        w_disp_out.setEnabled(True)
-        for out_xlsx in xlsx_list:
-            dummy, short_fn = split(out_xlsx)
-            w_combo17.addItem(short_fn)
-    return
 
 class ReadCropOwNitrogenParms(object, ):
     """

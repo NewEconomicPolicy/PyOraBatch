@@ -14,6 +14,7 @@ from argparse import ArgumentParser
 from os.path import abspath, expanduser, expandvars, normpath, join, isfile, split, isdir
 
 from initialise_pyorator_batch import read_config_file, initiation
+from ora_cn_model import run_soil_cn_algorithms
 
 sleepTime = 5
 WARN_STR = '*** Warning *** '
@@ -31,6 +32,7 @@ class RunSite(object):
         """
         initiation(self)
         read_config_file(self)
+        run_soil_cn_algorithms(self)
         pass
 
 def main():

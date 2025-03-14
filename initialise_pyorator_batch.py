@@ -30,8 +30,8 @@ from hwsd_bil import check_hwsd_integrity
 from weather_datasets import read_weather_dsets_detail
 
 from set_up_logging import set_up_logging
-from ora_excel_read_batch import check_xls_run_file
-from ora_excel_read import (check_params_excel_file, ReadStudy, ReadCropOwNitrogenParms, ReadAnmlProdn)
+from ora_excel_read import (check_xls_run_file, check_params_excel_file, ReadStudy,
+                            ReadCropOwNitrogenParms, ReadAnmlProdn)
 from ora_cn_classes import CarbonChange, NitrogenChange, CropProdModel, LivestockModel, EconomicsModel
 from ora_water_model import SoilWaterChange
 from ora_lookup_df_fns import read_lookup_excel_file, fetch_display_names_from_metrics
@@ -95,11 +95,9 @@ def _read_setup_file(program_id):
     read settings used for programme from the setup file, if it exists,
     or create setup file using default values if file does not exist
     """
-    func_name = __prog__ + ' _read_setup_file'
-
     # validate setup file
     # ===================
-    fname_setup = program_id + '_setup.json'
+    fname_setup = program_id + '_setup_batch.json'
 
     setup_file = join(getcwd(), fname_setup)
     if exists(setup_file):
@@ -250,35 +248,6 @@ def _read_setup_file(program_id):
 
     return settings, lookup_df
 
-def _write_default_config_file(config_file, study_area_dir):
-    """
-
-    """
-    farm_name = 'Grassland'
-    study = 'Dummy (IND)'
-    _default_config = {
-        'clim_scnr_indx': 0,
-        'csv_wthr_fn': '',
-        'farm_name': farm_name,
-        'mgmt_dir0': join(study_area_dir, study, farm_name),
-        'mnth_appl_indx': 4,
-        'nyrs_fwd': 10,
-        'nyrs_ss': 10,
-        'ow_type_indx': 4,
-        'owex_max': '10.0',
-        'owex_min': '0.1',
-        'strt_yr_fwd_indx': 0,
-        'strt_yr_ss_indx': 0,
-        'study': study,
-        'use_csv': False,
-        'use_isda': False,
-        'write_excel': False
-    }
-    # if config file does not exist then create it...
-    with open(config_file, 'w') as fconfig:
-        dump_json(_default_config, fconfig, indent=2, sort_keys=True)
-        return _default_config
-
 def read_config_file(form):
     """
     read widget settings used in the previous programme session from the config file, if it exists,
@@ -332,119 +301,63 @@ def read_config_file(form):
     else:
         print(WARN_STR + '\nRun file ' + run_xls_fname + ' does not exist\n\t- select another management path')
 
-    # stanza for extra org waste
-    # ==========================
-    for attrib in EXTRA_ORG_WASTE:
-        if attrib not in config:
-            owex_min = 0.0
-            owex_max = 0.0
-            ow_type_indx = 0
-            mnth_appl_indx = 0
-            break
+    # =======================
+    if config['write_excel']:
+        form.settings['write_excel'] = True
+        print('Will write comprehensive Excel output files')
     else:
-        owex_min = config['owex_min']
-        owex_max = config['owex_max']
-        ow_type_indx = config['ow_type_indx']
-        mnth_appl_indx = config['mnth_appl_indx']
+        form.settings['write_excel'] = False
 
-    crop_model = CropProdModel()
+    # ================================
+    print('Allowable organic waste types:')
+    for ow_typ in form.ora_parms.ow_parms:
+        if ow_typ != 'Organic waste type':
+            print('\t' + ow_typ)
 
-    # enable users to view outputs from previous run
-    # ==============================================
+    # read the run file
+    # =================
     study = ReadStudy(form, mgmt_dir0, run_xls_fname)
     if not study.study_ok_flag:
         return False
 
-    for sba in study.subareas:
-        form.w_tab_wdgt.w_combo36.addItem(sba)  # Sensitivity Analysis tab
+    mess = 'Use switches:\n'
+    for use_switch in ['use_csv', 'use_exstng_soil', 'use_isda', 'write_excel']:
+        mess += '\t' + use_switch + ': ' +  str(config[use_switch])
+    print(mess)
 
-    form.settings['study'] = study
+    mess = 'Numder of years for steady state run: ' +  str(config['strt_yr_ss_indx'])
+    mess += '\tforward run: ' + str(config['strt_yr_fwd_indx'])
+    print(mess)
 
-    if config['use_exstng_soil']:
-        form.w_tab_wdgt.w_use_exstng_soil.setChecked(True)
-    else:
-        form.w_tab_wdgt.w_use_exstng_soil.setChecked(False)
-
-    # TODO: improve understanding of check boxes
-    # ==========================================
-    if config['use_isda']:
-        form.w_tab_wdgt.w_use_isda.setChecked(True)
-    else:
-        form.w_tab_wdgt.w_use_hwsd.setChecked(True)
-
-    if config['use_csv']:
-        form.w_tab_wdgt.w_use_csv.setChecked(True)
-    else:
-        form.w_tab_wdgt.w_use_spatial.setChecked(True)
-
-    # populate widgets relating to study and farms
-    # ============================================
-    stdy_indx = form.w_tab_wdgt.w_combo00.findText(config['study'])
-    if stdy_indx >= 0:
-        form.w_tab_wdgt.w_combo00.setCurrentIndex(stdy_indx)
-
-    repopulate_farms_dropdown(form)
-    farm_indx = form.w_tab_wdgt.w_combo02.findText(config['farm_name'])
-    if farm_indx >= 0:
-        form.w_tab_wdgt.w_combo02.setCurrentIndex(farm_indx)
-
-    # populate widgets relating to weather
-    # ====================================
-    if form.settings['wthr_dir'] is None:
-        form.w_tab_wdgt.w_use_csv.setChecked(True)
-        form.w_tab_wdgt.w_combo30.setEnabled(False)
-        form.w_tab_wdgt.w_combo29s.setEnabled(False)
-        form.w_tab_wdgt.w_combo31s.setEnabled(False)
-    else:
-        form.w_tab_wdgt.w_combo30.setCurrentIndex(config['clim_scnr_indx'])
-        form.w_tab_wdgt.w_combo29s.setCurrentIndex(config['strt_yr_ss_indx'])
-        form.w_tab_wdgt.w_combo31s.setCurrentIndex(config['strt_yr_fwd_indx'])
-
-    form.w_tab_wdgt.w_nyrs_ss.setText(str(config['nyrs_ss']))
-    form.w_tab_wdgt.w_nyrs_fwd.setText(str(config['nyrs_fwd']))
-
-    dum, dum = read_csv_wthr_file(config['csv_wthr_fn'], form.w_tab_wdgt.w_csv_dscr)
+    form.settings = dict(sorted(form.settings.items()))
 
     return True
 
-def write_config_file(form, message_flag=True):
+def _write_default_config_file(config_file, study_area_dir):
     """
-    write current selections to config file
-    """
-    nyrs_ss, nyrs_fwd = simulation_yrs_validate(form.w_tab_wdgt.w_nyrs_ss, form.w_tab_wdgt.w_nyrs_fwd)
 
-    # only one config file
-    # ====================
-    config_file = form.settings['config_file']
-    config = {
-        'mgmt_dir0': form.w_tab_wdgt.w_run_dir0.text(),
-        'write_excel': form.w_tab_wdgt.w_make_xls.isChecked(),
-        'owex_min': form.w_tab_wdgt.w_owex_min.text(),
-        'owex_max': form.w_tab_wdgt.w_owex_max.text(),
-        'ow_type_indx': form.w_tab_wdgt.w_combo13.currentIndex(),
-        'mnth_appl_indx': form.w_tab_wdgt.w_mnth_appl.currentIndex(),
-        'clim_scnr_indx': form.w_tab_wdgt.w_combo30.currentIndex(),
-        'csv_wthr_fn': form.w_tab_wdgt.w_csv_fn.text(),
-        'use_exstng_soil': form.w_tab_wdgt.w_use_exstng_soil.isChecked(),
-        'use_isda': form.w_tab_wdgt.w_use_isda.isChecked(),
-        'use_csv': form.w_tab_wdgt.w_use_csv.isChecked(),
-        'farm_name': form.w_tab_wdgt.w_combo02.currentText(),
-        'nyrs_ss': nyrs_ss,
-        'nyrs_fwd': nyrs_fwd,
-        'strt_yr_ss_indx': form.w_tab_wdgt.w_combo29s.currentIndex(),
-        'strt_yr_fwd_indx': form.w_tab_wdgt.w_combo31s.currentIndex(),
-        'study': form.w_tab_wdgt.w_combo00.currentText()
+    """
+    farm_name = 'Grassland'
+    study = 'Dummy (IND)'
+    _default_config = {
+        'clim_scnr_indx': 0,
+        'csv_wthr_fn': '',
+        'farm_name': farm_name,
+        'mgmt_dir0': join(study_area_dir, study, farm_name),
+        'mnth_appl_indx': 4,
+        'nyrs_fwd': 10,
+        'nyrs_ss': 10,
+        'ow_type_indx': 4,
+        'owex_max': '10.0',
+        'owex_min': '0.1',
+        'strt_yr_fwd_indx': 0,
+        'strt_yr_ss_indx': 0,
+        'study': study,
+        'use_csv': False,
+        'use_isda': False,
+        'write_excel': False
     }
-    if isfile(config_file):
-        descriptor = 'Updated existing'
-    else:
-        descriptor = 'Wrote new'
-
-    with open(config_file, 'w') as fcnfg:
-        dump_json(config, fcnfg, indent=2, sort_keys=True)
-        if message_flag:
-            print('\n' + descriptor + ' configuration file ' + config_file)
-        else:
-            print()
-
-    return
+    # if config file does not exist then create it...
+    with open(config_file, 'w') as fconfig:
+        dump_json(_default_config, fconfig, indent=2, sort_keys=True)
+        return _default_config
