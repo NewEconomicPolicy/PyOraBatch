@@ -247,7 +247,7 @@ def write_excel_all_subareas(study, out_dir, lookup_df, all_runs):
                 print(WARN_STR + str(err) + ' for variable ' + metric)
                 data_frame = DataFrame()
 
-            data_frame.to_excel(writer, subarea, index=False)
+            data_frame.to_excel(excel_writer=writer, sheet_name=subarea, index=False)
 
         writer.close()
 

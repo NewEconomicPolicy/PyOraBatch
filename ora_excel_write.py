@@ -163,7 +163,7 @@ def _write_excel_out(lggr, sheet_name, out_obj, writer, wb_map):
 
     # output frame and record number of columns
     # =========================================
-    data_frame.to_excel(writer, sheet_name, index=False, freeze_panes=(1, 1))
+    data_frame.to_excel(excel_writer=writer, sheet_name=sheet_name, index=False, freeze_panes=(1, 1))
     wb_map[sheet_name] = len(out_obj.var_name_list)
 
     return writer
