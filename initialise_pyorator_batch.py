@@ -63,9 +63,8 @@ def initiation(form):
     # ======================
     parms_xls_fn = form.settings['params_xls']
     print('Reading: ' + parms_xls_fn)
-    ora_parms = ReadCropOwNitrogenParms(parms_xls_fn)
-    form.ora_parms = ora_parms
-    form.anml_prodn = ora_parms
+    form.ora_parms = ReadCropOwNitrogenParms(parms_xls_fn)
+    form.anml_prodn = ReadAnmlProdn(parms_xls_fn, form.ora_parms.crop_vars)
 
     # check weather data
     # ==================
@@ -253,8 +252,9 @@ def read_config_file(form):
     read widget settings used in the previous programme session from the config file, if it exists,
     or create config file using default settings if config file does not exist
     """
+    USE_SWITCHES = list(['use_isda', 'use_csv', 'nyrs_ss', 'nyrs_fwd'])
     MANDAT_ATTRIBS = list(['mgmt_dir0', 'write_excel', 'clim_scnr_indx', 'strt_yr_ss_indx', 'strt_yr_fwd_indx',
-                           'study', 'farm_name', 'use_exstng_soil', 'use_isda', 'use_csv', 'nyrs_ss', 'nyrs_fwd'])
+                           'study', 'farm_name', 'use_exstng_soil']) + USE_SWITCHES
     EXTRA_ORG_WASTE = list(['owex_min', 'owex_max', 'ow_type_indx', 'mnth_appl_indx'])
 
     config_file = form.settings['config_file']
@@ -321,7 +321,7 @@ def read_config_file(form):
         return False
 
     mess = 'Use switches:\n'
-    for use_switch in ['use_csv', 'use_exstng_soil', 'use_isda', 'write_excel']:
+    for use_switch in USE_SWITCHES:
         mess += '\t' + use_switch + ': ' +  str(config[use_switch])
     print(mess)
 

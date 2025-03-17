@@ -973,15 +973,15 @@ class ReadAnmlProdn(object, ):
         column_names = list(self.header_mappings.keys())
         data = read_excel(xls_fname, header=None, names=column_names, sheet_name=ANML_PRODN_SHEET,
                           usecols=range(1, 13), skiprows=range(0, 13))
-        anml_prodn = data.dropna(how='all')
-        self.anml_prodn = anml_prodn
+        anml_prodn_df = data.dropna(how='all')
+        self.anml_prodn_df = anml_prodn_df
 
         # allowable values required for validation
         # ========================================
-        self.anml_types = list(anml_prodn['Type'].unique())  # + list(['Pigs','Poultry'])
-        self.prodn_systms = list(anml_prodn['ProdSystem'].unique())
-        self.world_regions = list(anml_prodn['Region'].unique())
-        self.farm_systems = list(anml_prodn['System'].unique())
+        self.anml_types = list(anml_prodn_df['Type'].unique())  # + list(['Pigs','Poultry'])
+        self.prodn_systms = list(anml_prodn_df['ProdSystem'].unique())
+        self.world_regions = list(anml_prodn_df['Region'].unique())
+        self.farm_systems = list(anml_prodn_df['System'].unique())
         self.crop_names = ['None'] + list(crop_vars.keys())
 
         # TODO: a patch to get through transition
@@ -999,13 +999,11 @@ class ReadLivestockSheet(object, ):
     """
     X
     """
-    def __init__(self, w_run_dir3, anml_prodn_obj):
+    def __init__(self, mgmt_dir, anml_prodn_obj):
         """
 
         """
         lvstck_sht_name = RUN_SHT_NAMES['lvstck']
-
-        mgmt_dir = w_run_dir3.text()
         run_xls_fn = join(mgmt_dir, FNAME_RUN)
 
         wb_obj = load_workbook(run_xls_fn, data_only=True)
@@ -1078,30 +1076,6 @@ class ReadLivestockSheet(object, ):
                 lvstck_grp.append(LivestockEntity(site_defn[key], anml_prodn_obj))
 
         subareas = {area: {'region': region, 'system': system, 'lvstck_grp': lvstck_grp}}
-
         self.subareas = subareas
 
         print()  # cosmetic
-        '''
-        for anml, nmbr in zip(anml_abbrevs, df.values[irow][1:]):  # numbers of animals
-            if nmbr is not None:
-                pass
-        irow += 1
-        for anml, strtg in zip(anml_abbrevs, df.values[irow][1:]):  # strategies
-            pass    # strtg
-
-        for findx in range(NFEED_TYPES):
-            irow += 1
-            fd_typ = str(findx + 1)
-            for anml, feed_typ in zip(anml_abbrevs, df.values[irow][1:]):  # feed type
-                pass  # feed_typ
-
-            irow += 1
-            for anml, feed_qty in zip(anml_abbrevs, df.values[irow][1:]):  # feed quantity as a percentage
-                pass  # feed_qty
-
-        irow += 1
-        for anml, pcnt in zip(anml_abbrevs, df.values[irow][1:]):  # percentage bought in
-            if pcnt is not None:
-                pass  # pcnt     
-        '''

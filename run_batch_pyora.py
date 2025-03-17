@@ -15,6 +15,8 @@ from os.path import abspath, expanduser, expandvars, normpath, join, isfile, spl
 
 from initialise_pyorator_batch import read_config_file, initiation
 from ora_cn_model import run_soil_cn_algorithms
+from livestock_output_data import calc_livestock_data, check_livestock_run_data
+from ora_economics_model import test_economics_algorithms
 
 sleepTime = 5
 WARN_STR = '*** Warning *** '
@@ -33,7 +35,11 @@ class RunSite(object):
         initiation(self)
         read_config_file(self)
         run_soil_cn_algorithms(self)
-        pass
+
+        if check_livestock_run_data(self.settings['mgmt_dir'], self.anml_prodn):
+            calc_livestock_data(self)
+            test_economics_algorithms(self)
+            print('Livestock animal types to process: {}'.format(''))
 
 def main():
     """
@@ -44,7 +50,7 @@ def main():
                                usage='{} runfile'.format(__prog__))
     argparser.add_argument('runfnsdir', help='Full path of for the Excel run files' + FNAME_RUN)
     args = argparser.parse_args()
-    args.runfnsdir= abspath(normpath(expanduser(expandvars(args.runfnsdir))))
+    args.runfnsdir = abspath(normpath(expanduser(expandvars(args.runfnsdir))))
 
     RunSite(args.runfnsdir)  # instantiate model run
     # sim.run_ecosse()
